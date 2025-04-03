@@ -9,7 +9,6 @@ import * as WebBrowser from "expo-web-browser";
 import { useContext, useEffect } from "react";
 import { useRef } from "react";
 import { SmarterFhirContext } from "../index";
-
 WebBrowser.maybeCompleteAuthSession();
 
 updateLocationPolyfill("exp://192.168.1.23:8081");

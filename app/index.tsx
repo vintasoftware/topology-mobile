@@ -1,14 +1,22 @@
 // @ts-ignore
 import React, { useEffect, useState, useContext, createContext } from "react";
-import { BaseClient} from "@TopologyHealth/smarterfhir";
+import { BaseClient } from "@TopologyHealth/smarterfhir";
 import { Patient } from "@medplum/fhirtypes";
 import {
   SafeAreaView,
   StyleSheet,
-  Text,
   View,
+  ScrollView,
 } from "react-native";
 import EpicIntegration from "./components/EpicIntegration";
+import { HeaderSection } from "./components/HeaderSection";
+import { QuickActionsSection } from "./components/QuickActionsSection";
+import { UpcomingSection } from "./components/UpcomingSection";
+import { HealthMetricsSection } from "./components/HealthMetricsSection";
+import { DiagnosticsAndGoalsSection } from "./components/DiagnosticsAndGoalsSection";
+import { MedicationsSection } from "./components/MedicationsSection";
+import { GoalsSection } from "./components/GoalsSection";
+import { ConditionsAndPractitionersSection } from "./components/ConditionsAndPractitionersSection";
 
 export const SmarterFhirContext = createContext<{
   client: BaseClient | null;
@@ -17,6 +25,10 @@ export const SmarterFhirContext = createContext<{
   client: null,
   setClient: () => {},
 });
+
+const Divider = () => (
+  <View style={styles.divider} />
+);
 
 export default function OAuthScreen() {
   const [client, setClient] = useState<BaseClient | null>(null);
@@ -36,39 +48,51 @@ export default function OAuthScreen() {
   return (
     <SmarterFhirContext.Provider value={{ client, setClient }}>
       <SafeAreaView style={styles.container}>
-        <View>
-          {!client && <EpicIntegration />}
-          {/* Display patient info if available */}
-          {patient && (
-            <View style={{ marginTop: 20 }}>
-              <Text style={{ fontSize: 18 }}>Patient Info:</Text>
-              <Text>ID: {patient.id}</Text>
-              <Text>Name: {patient.name?.[0]?.text || "Unknown"}</Text>
-              <Text>Gender: {patient.gender}</Text>
-              <Text>Birth Date: {patient.birthDate}</Text>
-            </View>
-          )}
-        </View>
+        <ScrollView contentContainerStyle={styles.scrollContent}>
+          <View>
+            {!client && <EpicIntegration />}
+            {patient && (
+              <View style={styles.contentContainer}>
+                <HeaderSection patient={patient} />
+                <Divider />
+                <ConditionsAndPractitionersSection patient={patient} />
+                <Divider />
+                <GoalsSection />
+                <Divider />
+                <DiagnosticsAndGoalsSection />
+                <Divider />
+                <UpcomingSection />
+                <Divider />
+                <HealthMetricsSection />
+                <Divider />
+                <MedicationsSection />
+              </View>
+            )}
+          </View>
+        </ScrollView>
       </SafeAreaView>
     </SmarterFhirContext.Provider>
   );
 }
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    padding: 20,
     backgroundColor: "#25292e",
   },
-  title: {
-    fontSize: 18,
-    fontWeight: "bold",
+  scrollContent: {
+    flexGrow: 1,
+    padding: 20,
+  },
+  contentContainer: {
+    flex: 1,
+  },
+  section: {
     marginBottom: 20,
   },
-  tokenText: {
-    marginTop: 10,
-    fontSize: 14,
-    color: "#333",
+  divider: {
+    height: 1,
+    backgroundColor: '#3a3a3a',
+    marginVertical: 15,
   },
 });
