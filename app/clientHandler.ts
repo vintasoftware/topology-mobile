@@ -64,11 +64,11 @@ export default class ClientFactoryNative {
    */
   async createEMRClient(
     launchType: LAUNCH = LAUNCH.EMR,
-    codeVerifier?: string,
+    codeVerifier?: string
   ): Promise<BaseClient> {
     const defaultFhirClient = await this.createDefaultFhirClient(
       launchType,
-      codeVerifier,
+      codeVerifier
     );
     const emrType = this.getEMRType(defaultFhirClient);
     switch (emrType) {
@@ -92,7 +92,7 @@ export default class ClientFactoryNative {
    */
   private async createDefaultFhirClient(
     launchType: LAUNCH,
-    codeVerifier?: string,
+    codeVerifier?: string
   ): Promise<SubClient> {
     switch (launchType) {
       case LAUNCH.EMR:
@@ -137,7 +137,7 @@ export default class ClientFactoryNative {
       code,
       clientId,
       redirectUri,
-      codeVerifier,
+      codeVerifier
     );
     // console.log("Token response", tokenResponse);
     const defaultFhirClient = FHIR.client(r4Endpoint.toString());
@@ -167,12 +167,12 @@ async function getAccessToken(
   code: string,
   clientId: string,
   redirectUri: string,
-  codeVerifier?: string,
+  codeVerifier?: string
 ) {
   const params = {
     grant_type: "authorization_code",
     code: code,
-    redirect_uri: "exp://192.168.1.8:8081",
+    redirect_uri: "exp://192.168.1.23:8081",
     client_id: clientId,
     code_verifier: codeVerifier || "",
   };
@@ -189,7 +189,7 @@ async function getAccessToken(
       console.log("Token Response:", tokenResponse);
       if (!tokenResponse.access_token)
         throw new Error(
-          "Could not find any access token from the oauth endpoint's response",
+          "Could not find any access token from the oauth endpoint's response"
         );
       return tokenResponse;
     });
