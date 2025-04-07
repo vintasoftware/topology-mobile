@@ -1,6 +1,6 @@
 import { StyleSheet, Text, View, ScrollView } from "react-native";
 import { useContext, useEffect, useState } from "react";
-import { SmarterFhirContext } from "../index";
+import { SmarterFhirContext } from "../context/SmarterFhirContext";
 import { MedicationRequest, Bundle } from "@medplum/fhirtypes";
 
 interface MedicationItem {
@@ -52,7 +52,7 @@ const MedicationCard = ({ medication }: { medication: MedicationItem }) => (
   </View>
 );
 
-export const MedicationsSection = () => {
+const MedicationsSection = () => {
   const { client } = useContext(SmarterFhirContext);
   const [medications, setMedications] = useState<MedicationItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -135,6 +135,8 @@ export const MedicationsSection = () => {
     </View>
   );
 };
+
+export default MedicationsSection;
 
 const styles = StyleSheet.create({
   section: {

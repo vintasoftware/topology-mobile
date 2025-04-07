@@ -1,7 +1,7 @@
 import { StyleSheet, Text, View } from "react-native";
 import { Ionicons } from '@expo/vector-icons';
 import { useContext, useEffect, useState } from "react";
-import { SmarterFhirContext } from "../index";
+import { SmarterFhirContext } from "../context/SmarterFhirContext";
 import { Appointment, Bundle } from "@medplum/fhirtypes";
 
 interface AppointmentItem {
@@ -24,7 +24,7 @@ const formatDate = (dateString: string): string => {
   return date.toLocaleDateString('en-US', options);
 };
 
-export const UpcomingSection = () => {
+const UpcomingSection = () => {
   const { client } = useContext(SmarterFhirContext);
   const [appointments, setAppointments] = useState<AppointmentItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -42,7 +42,6 @@ export const UpcomingSection = () => {
           `Appointment?date=ge${today}&_sort=date&_count=5`
         ) as Bundle;
 
-        console.log("Response:", response);
         if (response.entry) {
           const upcomingAppointments = response.entry
             .map(entry => entry.resource as Appointment)
@@ -105,6 +104,8 @@ export const UpcomingSection = () => {
     </View>
   );
 };
+
+export default UpcomingSection;
 
 const styles = StyleSheet.create({
   section: {

@@ -1,23 +1,29 @@
 import { StyleSheet, Text, View, TouchableOpacity } from "react-native";
 import { Patient } from "@medplum/fhirtypes";
+import { useContext } from "react";
+import { SmarterFhirContext } from "../context/SmarterFhirContext";
 
 interface HeaderSectionProps {
   patient: Patient;
 }
 
 export const HeaderSection = ({ patient }: HeaderSectionProps) => {
+  const { logout } = useContext(SmarterFhirContext);
+
   return (
     <View style={styles.container}>
       <View style={styles.headerText}>
         <Text style={styles.welcomeText}>Welcome back,</Text>
         <Text style={styles.nameText}>{patient.name?.[0]?.text || "Unknown"}</Text>
       </View>
-      <TouchableOpacity style={styles.logoutButton} onPress={() => {}}>
+      <TouchableOpacity style={styles.logoutButton} onPress={logout}>
         <Text style={styles.logoutText}>Logout</Text>
       </TouchableOpacity>
     </View>
   );
 };
+
+export default HeaderSection;
 
 const styles = StyleSheet.create({
   container: {

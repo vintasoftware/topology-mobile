@@ -1,6 +1,6 @@
 import { StyleSheet, Text, View, ScrollView } from "react-native";
 import { useContext, useEffect, useState } from "react";
-import { SmarterFhirContext } from "../index";
+import { SmarterFhirContext } from "../context/SmarterFhirContext";
 import { DiagnosticReport, Goal, Bundle } from "@medplum/fhirtypes";
 
 interface DiagnosticReportItem {
@@ -34,7 +34,7 @@ const DiagnosticReportCard = ({ report }: { report: DiagnosticReportItem }) => (
 );
 
 
-export const DiagnosticsAndGoalsSection = () => {
+const DiagnosticsAndGoalsSection = () => {
   const { client } = useContext(SmarterFhirContext);
   const [diagnosticReports, setDiagnosticReports] = useState<DiagnosticReportItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -196,3 +196,5 @@ const styles = StyleSheet.create({
     width: 280,
   },
 });
+
+export default DiagnosticsAndGoalsSection;

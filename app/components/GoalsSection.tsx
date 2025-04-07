@@ -1,6 +1,6 @@
 import React, { useContext, useEffect, useState } from "react";
 import { StyleSheet, Text, View, ScrollView, TouchableOpacity } from "react-native";
-import { SmarterFhirContext } from "../index";
+import { SmarterFhirContext } from "../context/SmarterFhirContext";
 import { Goal, Bundle } from "@medplum/fhirtypes";
 import { Ionicons } from '@expo/vector-icons';
 
@@ -37,7 +37,7 @@ const GoalCard = ({ goal, isMain = false }: { goal: GoalItem; isMain?: boolean }
   </View>
 );
 
-export const GoalsSection = () => {
+const GoalsSection = () => {
   const { client } = useContext(SmarterFhirContext);
   const [goals, setGoals] = useState<GoalItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -242,3 +242,5 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
 });
+
+export default GoalsSection;

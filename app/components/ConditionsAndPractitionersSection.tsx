@@ -1,7 +1,7 @@
 import React, { useContext, useEffect, useState } from "react";
 import { StyleSheet, Text, View, ScrollView } from "react-native";
-import { SmarterFhirContext } from "../index";
 import { Condition, Bundle, Practitioner, Patient } from "@medplum/fhirtypes";
+import { SmarterFhirContext } from "../context/SmarterFhirContext";
 
 interface ConditionItem {
   id: string;
@@ -85,7 +85,7 @@ const removeDuplicates = (conditions: ConditionItem[]): ConditionItem[] => {
   return Array.from(uniqueConditions.values());
 };
 
-export const ConditionsAndPractitionersSection = ({ patient }: { patient: Patient }) => {
+const ConditionsAndPractitionersSection = ({ patient }: { patient: Patient }) => {
   const { client } = useContext(SmarterFhirContext);
   const [conditions, setConditions] = useState<ConditionItem[]>([]);
   const [practitioners, setPractitioners] = useState<PractitionerItem[]>([]);
@@ -305,3 +305,5 @@ const styles = StyleSheet.create({
     width: 300,
   },
 });
+
+export default ConditionsAndPractitionersSection;

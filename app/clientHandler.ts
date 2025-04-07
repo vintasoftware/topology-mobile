@@ -139,7 +139,6 @@ export default class ClientFactoryNative {
       redirectUri,
       codeVerifier
     );
-    // console.log("Token response", tokenResponse);
     const defaultFhirClient = FHIR.client(r4Endpoint.toString());
     defaultFhirClient.state.clientId = clientId;
     defaultFhirClient.state.tokenResponse = {
@@ -172,7 +171,7 @@ async function getAccessToken(
   const params = {
     grant_type: "authorization_code",
     code: code,
-    redirect_uri: "exp://192.168.1.23:8081",
+    redirect_uri: process.env.EXPO_PUBLIC_REDIRECT_URL,
     client_id: clientId,
     code_verifier: codeVerifier || "",
   };
@@ -186,7 +185,6 @@ async function getAccessToken(
     .then(async (response) => await response.json())
     .then((json) => {
       const tokenResponse = json as FhirClientTypes.TokenResponse;
-      console.log("Token Response:", tokenResponse);
       if (!tokenResponse.access_token)
         throw new Error(
           "Could not find any access token from the oauth endpoint's response"

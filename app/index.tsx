@@ -1,5 +1,5 @@
 // @ts-ignore
-import React, { useEffect, useState, useContext, createContext } from "react";
+import React, { useEffect, useState } from "react";
 import { BaseClient } from "@TopologyHealth/smarterfhir";
 import { Patient } from "@medplum/fhirtypes";
 import {
@@ -10,35 +10,32 @@ import {
 } from "react-native";
 import EpicIntegration from "./components/EpicIntegration";
 import { HeaderSection } from "./components/HeaderSection";
-import { QuickActionsSection } from "./components/QuickActionsSection";
-import { UpcomingSection } from "./components/UpcomingSection";
-import { HealthMetricsSection } from "./components/HealthMetricsSection";
-import { DiagnosticsAndGoalsSection } from "./components/DiagnosticsAndGoalsSection";
-import { MedicationsSection } from "./components/MedicationsSection";
-import { GoalsSection } from "./components/GoalsSection";
-import { ConditionsAndPractitionersSection } from "./components/ConditionsAndPractitionersSection";
-
-export const SmarterFhirContext = createContext<{
-  client: BaseClient | null;
-  setClient: (client: BaseClient) => void;
-}>({
-  client: null,
-  setClient: () => {},
-});
+import UpcomingSection from "./components/UpcomingSection";
+import HealthMetricsSection from "./components/HealthMetricsSection";
+import DiagnosticsAndGoalsSection from "./components/DiagnosticsAndGoalsSection";
+import MedicationsSection from "./components/MedicationsSection";
+import GoalsSection from "./components/GoalsSection";
+import ConditionsAndPractitionersSection from "./components/ConditionsAndPractitionersSection";
+import { SmarterFhirContext } from "./context/SmarterFhirContext";
 
 const Divider = () => (
   <View style={styles.divider} />
 );
 
-export default function OAuthScreen() {
+export default function Index() {
   const [client, setClient] = useState<BaseClient | null>(null);
   const [patient, setPatient] = useState<Patient | null>(null);
+
+  const logout = () => {
+    // Clear client and patient state
+    setClient(null);
+    setPatient(null);
+  };
 
   useEffect(() => {
     const fetchPatient = async () => {
       if (client) {
         const data = await client.getPatientRead();
-        console.log("Patient Data:", data);
         setPatient(data);
       }
     };
@@ -46,7 +43,7 @@ export default function OAuthScreen() {
   }, [client]);
 
   return (
-    <SmarterFhirContext.Provider value={{ client, setClient }}>
+    <SmarterFhirContext.Provider value={{ client, setClient, logout }}>
       <SafeAreaView style={styles.container}>
         <ScrollView contentContainerStyle={styles.scrollContent}>
           <View>

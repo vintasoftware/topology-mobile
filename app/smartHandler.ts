@@ -33,7 +33,7 @@ export default class SmartLaunchHandlerNative {
   async authorizeEMR(
     launchType: LAUNCH = LAUNCH.EMR,
     emrType?: EMR,
-    redirectUriOverride?: string,
+    redirectUriOverride?: string
   ): Promise<void> {
     if (this.usePKCE) {
       const { codeChallenge, codeVerifier } = await buildCodeAsync();
@@ -60,7 +60,7 @@ export default class SmartLaunchHandlerNative {
    */
   private executeStandaloneLaunch(
     emrType: EMR | undefined,
-    redirectUriOverride: string | undefined,
+    redirectUriOverride: string | undefined
   ) {
     if (!emrType)
       throw new Error("EmrType must be specified for Standalone Launch");

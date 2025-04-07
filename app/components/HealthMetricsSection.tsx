@@ -1,6 +1,6 @@
 import { StyleSheet, Text, View } from "react-native";
 import { useContext, useEffect, useState } from "react";
-import { SmarterFhirContext } from "../index";
+import { SmarterFhirContext } from "../context/SmarterFhirContext";
 import { Observation, Bundle } from "@medplum/fhirtypes";
 
 interface HealthMetric {
@@ -72,7 +72,7 @@ const formatDate = (dateString: string): string => {
   });
 };
 
-export const HealthMetricsSection = () => {
+const HealthMetricsSection = () => {
   const { client } = useContext(SmarterFhirContext);
   const [metrics, setMetrics] = useState<HealthMetric[]>([]);
   const [loading, setLoading] = useState(true);
@@ -161,6 +161,8 @@ export const HealthMetricsSection = () => {
     </View>
   );
 };
+
+export default HealthMetricsSection;
 
 const styles = StyleSheet.create({
   section: {
