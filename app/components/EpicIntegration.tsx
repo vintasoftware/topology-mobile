@@ -28,8 +28,7 @@ export default function EpicIntegration() {
           codeVerifier.current,
         );
 
-        // @ts-ignore
-        setClient(client);
+        setClient(client as any);
       } catch (error) {
         console.error("Error handling URL change:", error);
       }

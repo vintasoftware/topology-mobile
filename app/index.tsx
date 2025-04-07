@@ -1,4 +1,3 @@
-// @ts-ignore
 import React, { useEffect, useState } from "react";
 import { BaseClient } from "@TopologyHealth/smarterfhir";
 import { Patient } from "@medplum/fhirtypes";
