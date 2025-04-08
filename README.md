@@ -7,7 +7,7 @@ This application demonstrates how to build a patient-facing healthcare app that 
 - SMART on FHIR authentication with Epic and other EMR systems
 - Patient data retrieval and display
 - View patient health information including:
-  - Conditions and practitioners
+- Conditions and Practitioners
   - Health goals
   - Diagnostics
   - Upcoming appointments
