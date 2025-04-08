@@ -185,10 +185,11 @@ async function getAccessToken(
     .then(async (response) => await response.json())
     .then((json) => {
       const tokenResponse = json as FhirClientTypes.TokenResponse;
-      if (!tokenResponse.access_token)
+      if (!tokenResponse.access_token) {
         throw new Error(
           "Could not find any access token from the oauth endpoint's response"
         );
+      }
       return tokenResponse;
     });
 }

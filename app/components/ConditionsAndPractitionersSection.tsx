@@ -92,67 +92,81 @@ const ConditionsAndPractitionersSection = ({ patient }: { patient: Patient }) =>
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  const fetchConditions = async (client: any): Promise<ConditionItem[]> => {
+    const conditionsResponse = (await client.requestResource(
+      "Condition?_sort=-onset-date&_count=10"
+    )) as Bundle;
+    if (!conditionsResponse.entry) return [];
+
+    const conditions = conditionsResponse.entry
+      .map((entry) => entry.resource as Condition)
+      .filter((condition) => condition?.id && condition?.code?.text)
+      .map((condition) => ({
+        id: condition.id!,
+        name: condition.code!.text!,
+        status: condition.clinicalStatus?.coding?.[0]?.code || "unknown",
+        onsetDate: condition.onsetDateTime ? formatDate(condition.onsetDateTime) : "Unknown",
+        severity: condition.severity?.coding?.[0]?.display,
+        category: condition.category?.[0]?.coding?.[0]?.display,
+      }))
+      .filter(
+        (condition) =>
+          condition.name !== "Unknown" &&
+          !condition.name.toLowerCase().includes("unknown") &&
+          condition.status !== "unknown"
+      );
+    return removeDuplicates(conditions);
+  };
+
+  const fetchPractitioners = async (
+    client: any,
+    patient: Patient
+  ): Promise<PractitionerItem[]> => {
+    if (!patient.generalPractitioner) return [];
+
+    const practitionerPromises = patient.generalPractitioner
+      .filter((ref) => ref.reference?.startsWith("Practitioner/"))
+      .map((ref) => {
+        const practitionerId = ref.reference?.split("/")[1];
+        return client.requestResource(
+          `Practitioner/${practitionerId}`
+        ) as Promise<Practitioner>;
+      });
+    const practitionerResponses = await Promise.all(practitionerPromises);
+    return practitionerResponses
+      .filter(
+        (practitioner) =>
+          practitioner?.id && practitioner?.name?.[0]?.text
+      )
+      .map((practitioner) => ({
+        id: practitioner.id!,
+        name: practitioner.name![0].text!,
+        reference: `Practitioner/${practitioner.id}`,
+        prefix: practitioner.name![0].prefix?.[0] || "Dr.",
+        specialty: practitioner.qualification?.[0]?.code?.coding?.[0]?.display,
+        phone: practitioner.telecom?.find((t) => t.system === "phone")
+          ?.value,
+        email: practitioner.telecom?.find((t) => t.system === "email")
+          ?.value,
+      }))
+      .filter(
+        (practitioner) =>
+          practitioner.name !== "Unknown" &&
+          !practitioner.name.toLowerCase().includes("unknown")
+      );
+  };
+
   useEffect(() => {
     const fetchData = async () => {
       if (!client) return;
 
       try {
-        // Fetch Conditions
-        const conditionsResponse = await client.requestResource(
-          'Condition?_sort=-onset-date&_count=10'
-        ) as Bundle;
-
-        if (conditionsResponse.entry) {
-          const conditions = conditionsResponse.entry
-            .map(entry => entry.resource as Condition)
-            .filter(condition => condition?.id && condition?.code?.text)
-            .map(condition => ({
-              id: condition.id!,
-              name: condition.code!.text!,
-              status: condition.clinicalStatus?.coding?.[0]?.code || 'unknown',
-              onsetDate: condition.onsetDateTime ? formatDate(condition.onsetDateTime) : 'Unknown',
-              severity: condition.severity?.coding?.[0]?.display,
-              category: condition.category?.[0]?.coding?.[0]?.display
-            }))
-            .filter(condition =>
-              condition.name !== 'Unknown' &&
-              !condition.name.toLowerCase().includes('unknown') &&
-              condition.status !== 'unknown'
-            );
-
-          // Remove duplicates and set the filtered conditions
-          setConditions(removeDuplicates(conditions));
-        }
-
-        // Get practitioners from patient's generalPractitioner references
-        if (patient.generalPractitioner) {
-          const practitionerPromises = patient.generalPractitioner
-            .filter(ref => ref.reference?.startsWith('Practitioner/'))
-            .map(ref => {
-              const practitionerId = ref.reference?.split('/')[1];
-              return client.requestResource(`Practitioner/${practitionerId}`) as Promise<Practitioner>;
-            });
-
-          const practitionerResponses = await Promise.all(practitionerPromises);
-
-          const practitioners = practitionerResponses
-            .filter(practitioner => practitioner?.id && practitioner?.name?.[0]?.text)
-            .map(practitioner => ({
-              id: practitioner.id!,
-              name: practitioner.name![0].text!,
-              reference: `Practitioner/${practitioner.id}`,
-              prefix: practitioner.name![0].prefix?.[0] || "Dr.",
-              specialty: practitioner.qualification?.[0]?.code?.coding?.[0]?.display,
-              phone: practitioner.telecom?.find(t => t.system === 'phone')?.value,
-              email: practitioner.telecom?.find(t => t.system === 'email')?.value
-            }))
-            .filter(practitioner =>
-              practitioner.name !== 'Unknown' &&
-              !practitioner.name.toLowerCase().includes('unknown')
-            );
-
-          setPractitioners(practitioners);
-        }
+        const [fetchedConditions, fetchedPractitioners] = await Promise.all([
+          fetchConditions(client),
+          fetchPractitioners(client, patient),
+        ]);
+        setConditions(fetchedConditions);
+        setPractitioners(fetchedPractitioners);
       } catch (error) {
         console.error("Error fetching data:", error);
         setError("Unable to fetch data at this time");

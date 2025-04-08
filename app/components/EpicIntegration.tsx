@@ -1,4 +1,4 @@
-import { EMR, LAUNCH } from "@TopologyHealth/smarterfhir";
+import { BaseClient, EMR, LAUNCH } from "@TopologyHealth/smarterfhir";
 import { Button, Linking, StyleSheet, Text, View } from "react-native";
 import updateLocationPolyfill from "../locationPolyfill";
 import ClientFactoryNative from "../clientHandler";
@@ -28,7 +28,7 @@ export default function EpicIntegration() {
           codeVerifier.current,
         );
 
-        setClient(client as any);
+        setClient(client as unknown as BaseClient);
       } catch (error) {
         console.error("Error handling URL change:", error);
       }
