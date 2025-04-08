@@ -47,7 +47,6 @@ export default function EpicIntegration() {
     if (client === null) {
       updateLocationPolyfill(process.env.EXPO_PUBLIC_REDIRECT_URL!);
       codeVerifier.current = "";
-
     }
   }, [client]);
 
