@@ -61,6 +61,14 @@ In the output, you'll find options to open the app in a
 
 You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
 
+### Development Setup
+
+The project uses ESLint, Prettier, and Husky for code quality and consistency. Install Husky pre-commit hooks:
+
+```bash
+npm run prepare
+```
+
 ### Configuring Epic OAuth2
 
 1. Create a account on https://fhir.epic.com/Developer/
