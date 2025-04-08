@@ -4,7 +4,7 @@ This application demonstrates how to build a patient-facing healthcare app that 
 
 ## Key Features
 
-- SMART on FHIR authentication with Epic and other EMR systems
+- OAuth2 Authentication with Epic and other EMR systems
 - Patient data retrieval and display
 - View patient health information including:
 - Conditions and Practitioners
@@ -14,7 +14,7 @@ This application demonstrates how to build a patient-facing healthcare app that 
   - Health metrics
   - Medications
 
-## Application Content
+### Application Content
 
 The following screenshots showcase the key features of the Topology Mobile application powered by the SMARTerFHIR toolkit.
 
@@ -26,7 +26,19 @@ The following screenshots showcase the key features of the Topology Mobile appli
 | :------------------------------------------: | :--------------------------------------------------------: | :----------------------------------------------------------------------: |
 |              Patient Dashboard               |                Dashboard (Alternative View)                |                       Health Metrics & Medications                       |
 
+### About Topology Health
+
+Topology Health has a set of tools for faster and easier EMR/EHR integration. https://github.com/TopologyHealth
+
 ## Get started
+
+### Prerequisites
+
+- [Expo CLI](https://docs.expo.dev/)
+- npm or yarn
+- iOS Simulator (for iOS) or Android Emulator (for Android)
+
+### Install
 
 1. Install dependencies
 
@@ -48,6 +60,30 @@ In the output, you'll find options to open the app in a
 - [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
 
 You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
+
+### Configuring Epic OAuth2
+
+1. Create a account on https://fhir.epic.com/Developer/
+
+2. Inside your developer view, create a new App
+
+   1. Create two new client applications, one for web and one for native.
+   2. Set the Redirect URI to `http://localhost:8081` for the web client and something like `exp://192.168.???.???:8081` for the native client.
+      - Run `npm start`, run the app on your device with Expo Go, and check the "Redirect URL: ..." log message in the terminal to get the IP address to use.
+   3. After creating the two new client applications, copy the client ID from both.
+
+3. Copy the `.env.local.example` file to `.env`
+
+   ```bash
+   cp .env.local.example .env
+   ```
+
+4. Fill in the values in the `.env` file:
+
+   ```bash
+   EXPO_PUBLIC_MEDPLUM_WEB_CLIENT_ID=your_web_client_id
+   EXPO_PUBLIC_MEDPLUM_NATIVE_CLIENT_ID=your_native_client_id
+   ```
 
 ## Learn more
 
