@@ -9,7 +9,7 @@
     "ios": "expo run:ios",
     "web": "expo start --web --port 3000",
     "test": "jest --watchAll",
-    "lint": "eslint \"{src,apps,libs,test}/**/*.ts\" --fix",
+    "lint": "eslint \"{src,apps,libs,test}/**/*.{ts,tsx}\" --fix",
     "prepare": "husky"
   },
   "lint-staged": {
