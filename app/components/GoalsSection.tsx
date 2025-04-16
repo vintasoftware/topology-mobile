@@ -1,8 +1,7 @@
-import React, { useContext, useEffect, useState } from "react";
-import { StyleSheet, Text, View, ScrollView, TouchableOpacity } from "react-native";
-import { SmarterFhirContext } from "../context/SmarterFhirContext";
-import { Goal, Bundle } from "@medplum/fhirtypes";
-import { Ionicons } from '@expo/vector-icons';
+import React, { useState } from "react";
+import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
+
+import { usePatient } from "../context/PatientContext";
 
 interface GoalItem {
   id: string;
@@ -14,76 +13,29 @@ interface GoalItem {
 
 const formatDate = (dateString: string): string => {
   const date = new Date(dateString);
-  return date.toLocaleDateString('en-US', {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric'
-  });
+  return date.toLocaleDateString();
 };
 
-const GoalCard = ({ goal, isMain = false }: { goal: GoalItem; isMain?: boolean }) => (
-  <View style={[styles.card, isMain && styles.mainCard]}>
-    <View style={styles.cardHeader}>
-      <Text style={[styles.cardTitle, isMain && styles.mainCardTitle]}>{goal.description}</Text>
-      <View style={[styles.statusBadge, {
-        backgroundColor: goal.status === 'achieved' ? '#27ae60' :
-                        goal.status === 'active' ? '#3498db' : '#f39c12'
-      }]}>
-        <Text style={styles.statusText}>{goal.status}</Text>
-      </View>
-    </View>
-    <Text style={styles.dateText}>Start Date: {goal.startDate}</Text>
-    <Text style={styles.progressText}>Progress: {goal.progress}</Text>
-  </View>
-);
-
 const GoalsSection = () => {
-  const { client } = useContext(SmarterFhirContext);
-  const [goals, setGoals] = useState<GoalItem[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { goals, loading, error } = usePatient();
   const [isExpanded, setIsExpanded] = useState(false);
 
-  useEffect(() => {
-    const fetchGoals = async () => {
-      if (!client) return;
-
-      try {
-        const goalsResponse = await client.requestResource(
-          'Goal?_sort=-target-date&_count=10'
-        ) as Bundle;
-
-        if (goalsResponse.entry) {
-          const goals = goalsResponse.entry
-            .map(entry => entry.resource as Goal)
-            .filter(goal => goal?.id && goal?.description?.text)
-            .map(goal => ({
-              id: goal.id!,
-              description: goal.description!.text!,
-              status: goal.lifecycleStatus || 'unknown',
-              startDate: goal.startDate ? formatDate(goal.startDate) : 'No start date',
-              progress: goal.achievementStatus?.text || 'In progress'
-            }))
-            .filter(goal => goal.description !== 'Unknown Goal')
-            .sort((a, b) => {
-              // Sort by start date, with no date at the end
-              if (a.startDate === 'No start date') return 1;
-              if (b.startDate === 'No start date') return -1;
-              return new Date(b.startDate).getTime() - new Date(a.startDate).getTime();
-            });
-
-          setGoals(goals);
-        }
-      } catch (error) {
-        console.error("Error fetching goals:", error);
-        setError("Unable to fetch goals at this time");
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchGoals();
-  }, [client]);
+  const formattedGoals: GoalItem[] = goals
+    .filter((goal) => goal?.id && goal?.description?.text)
+    .map((goal) => ({
+      id: goal.id!,
+      description: goal.description!.text!,
+      status: goal.lifecycleStatus || "unknown",
+      startDate: goal.startDate ? formatDate(goal.startDate) : "No start date",
+      progress: goal.achievementStatus?.text || "In progress",
+    }))
+    .filter((goal) => goal.description !== "Unknown Goal")
+    .sort((a, b) => {
+      // Sort by start date, with no date at the end
+      if (a.startDate === "No start date") return 1;
+      if (b.startDate === "No start date") return -1;
+      return new Date(b.startDate).getTime() - new Date(a.startDate).getTime();
+    });
 
   if (loading) {
     return (
@@ -103,43 +55,47 @@ const GoalsSection = () => {
     );
   }
 
-  const mainGoal = goals[0];
-  const otherGoals = goals.slice(1);
-
   return (
     <View style={styles.section}>
-      <Text style={styles.sectionTitle}>Active Treatment Plans</Text>
-
-      {mainGoal && <GoalCard goal={mainGoal} isMain />}
-
-      {otherGoals.length > 0 && (
-        <>
-          <TouchableOpacity
-            style={styles.expandButton}
-            onPress={() => setIsExpanded(!isExpanded)}
-          >
-            <Text style={styles.expandButtonText}>
-              {isExpanded ? 'Show Less' : `Show ${otherGoals.length} More Goals`}
+      <View style={styles.sectionHeader}>
+        <Text style={styles.sectionTitle}>Health Goals</Text>
+        {formattedGoals.length > 3 && (
+          <TouchableOpacity onPress={() => setIsExpanded(!isExpanded)}>
+            <Text style={styles.expandButton}>
+              {isExpanded ? "Show Less" : "Show More"}
             </Text>
-            <Ionicons
-              name={isExpanded ? 'chevron-up' : 'chevron-down'}
-              size={20}
-              color="#fff"
-            />
           </TouchableOpacity>
-
-          {isExpanded && (
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.scrollView}>
-              {otherGoals.map(goal => (
-                <GoalCard key={goal.id} goal={goal} />
-              ))}
-            </ScrollView>
-          )}
-        </>
-      )}
-
-      {goals.length === 0 && (
-        <Text style={styles.noDataText}>No goals available</Text>
+        )}
+      </View>
+      {formattedGoals.length > 0 ? (
+        formattedGoals.slice(0, isExpanded ? undefined : 3).map((goal) => (
+          <View key={goal.id} style={styles.goalItem}>
+            <Text style={styles.goalDescription}>{goal.description}</Text>
+            <View style={styles.goalDetails}>
+              <Text style={styles.goalStatus}>{goal.status}</Text>
+              <Text style={styles.goalDate}>Started: {goal.startDate}</Text>
+            </View>
+            <View style={styles.progressContainer}>
+              <View
+                style={[
+                  styles.progressBar,
+                  {
+                    width: `${goal.progress === "Achieved" ? 100 : 50}%`,
+                    backgroundColor:
+                      goal.progress === "Achieved"
+                        ? "#27ae60"
+                        : goal.progress === "In progress"
+                          ? "#f39c12"
+                          : "#e74c3c",
+                  },
+                ]}
+              />
+              <Text style={styles.progressText}>{goal.progress}</Text>
+            </View>
+          </View>
+        ))
+      ) : (
+        <Text style={styles.noDataText}>No health goals available</Text>
       )}
     </View>
   );
@@ -147,45 +103,116 @@ const GoalsSection = () => {
 
 const styles = StyleSheet.create({
   section: {
-    marginBottom: 20,
-  },
-  sectionTitle: {
-    color: '#fff',
-    fontSize: 20,
-    fontWeight: 'bold',
+    padding: 20,
+    backgroundColor: "#1a1d20",
+    borderRadius: 12,
     marginBottom: 15,
   },
-  scrollView: {
+  sectionHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     marginBottom: 10,
   },
+  sectionTitle: {
+    color: "#fff",
+    fontSize: 18,
+    fontWeight: "600",
+    marginBottom: 10,
+  },
+  expandButton: {
+    color: "#ffd33d",
+    fontSize: 14,
+  },
+  goalItem: {
+    backgroundColor: "#1a1d20",
+    padding: 15,
+    borderRadius: 12,
+    marginBottom: 10,
+  },
+  goalDescription: {
+    color: "#fff",
+    fontSize: 16,
+    fontWeight: "600",
+    marginBottom: 8,
+  },
+  goalDetails: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 8,
+  },
+  goalStatus: {
+    color: "#fff",
+    fontSize: 12,
+    fontWeight: "500",
+  },
+  goalDate: {
+    color: "#fff",
+    fontSize: 12,
+    opacity: 0.8,
+  },
+  progressContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginTop: 8,
+  },
+  progressBar: {
+    height: 10,
+    borderRadius: 5,
+    marginRight: 10,
+  },
+  progressText: {
+    color: "#fff",
+    fontSize: 14,
+    opacity: 0.9,
+  },
+  loadingText: {
+    color: "#fff",
+    fontSize: 14,
+    opacity: 0.8,
+    textAlign: "center",
+  },
+  errorText: {
+    color: "#fff",
+    fontSize: 14,
+    opacity: 0.8,
+    textAlign: "center",
+  },
+  noDataText: {
+    color: "#fff",
+    fontSize: 14,
+    opacity: 0.8,
+    textAlign: "center",
+  },
   card: {
-    backgroundColor: '#1a1d20',
+    backgroundColor: "#1a1d20",
     padding: 15,
     borderRadius: 12,
     marginRight: 10,
     width: 280,
   },
   mainCard: {
-    backgroundColor: '#2c3e50',
-    width: '100%',
+    backgroundColor: "#2c3e50",
+    width: "100%",
     marginRight: 0,
     marginBottom: 15,
   },
   cardHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     marginBottom: 8,
   },
   cardTitle: {
-    color: '#fff',
+    color: "#fff",
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: "600",
     flex: 1,
   },
   mainCardTitle: {
     fontSize: 18,
-    fontWeight: '700',
+    fontWeight: "700",
   },
   statusBadge: {
     paddingHorizontal: 8,
@@ -194,52 +221,15 @@ const styles = StyleSheet.create({
     marginLeft: 10,
   },
   statusText: {
-    color: '#fff',
+    color: "#fff",
     fontSize: 12,
-    fontWeight: '500',
+    fontWeight: "500",
   },
   dateText: {
-    color: '#fff',
+    color: "#fff",
     fontSize: 12,
     opacity: 0.8,
     marginBottom: 8,
-  },
-  progressText: {
-    color: '#fff',
-    fontSize: 14,
-    opacity: 0.9,
-  },
-  expandButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 10,
-    backgroundColor: '#1a1d20',
-    borderRadius: 8,
-    marginBottom: 10,
-  },
-  expandButtonText: {
-    color: '#fff',
-    fontSize: 14,
-    marginRight: 5,
-  },
-  loadingText: {
-    color: '#fff',
-    fontSize: 14,
-    opacity: 0.8,
-    textAlign: 'center',
-  },
-  errorText: {
-    color: '#e74c3c',
-    fontSize: 14,
-    opacity: 0.8,
-    textAlign: 'center',
-  },
-  noDataText: {
-    color: '#fff',
-    fontSize: 14,
-    opacity: 0.8,
-    textAlign: 'center',
   },
 });
 

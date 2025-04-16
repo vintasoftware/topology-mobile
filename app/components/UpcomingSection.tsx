@@ -1,8 +1,7 @@
+import { Ionicons } from "@expo/vector-icons";
 import { StyleSheet, Text, View } from "react-native";
-import { Ionicons } from '@expo/vector-icons';
-import { useContext, useEffect, useState } from "react";
-import { SmarterFhirContext } from "../context/SmarterFhirContext";
-import { Appointment, Bundle } from "@medplum/fhirtypes";
+
+import { usePatient } from "../context/PatientContext";
 
 interface AppointmentItem {
   title: string;
@@ -13,56 +12,23 @@ interface AppointmentItem {
 
 const formatDate = (dateString: string): string => {
   const date = new Date(dateString);
-  const options: Intl.DateTimeFormatOptions = {
-    weekday: 'long',
-    month: 'long',
-    day: 'numeric',
-    hour: 'numeric',
-    minute: 'numeric',
-    hour12: true
-  };
-  return date.toLocaleDateString('en-US', options);
+  return date.toLocaleDateString();
 };
 
 const UpcomingSection = () => {
-  const { client } = useContext(SmarterFhirContext);
-  const [appointments, setAppointments] = useState<AppointmentItem[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { appointments, loading, error } = usePatient();
 
-  useEffect(() => {
-    const fetchAppointments = async () => {
-      if (!client) return;
-
-      try {
-        // Get current date in FHIR format
-        const today = new Date().toISOString().split('T')[0];
-
-        // Search for appointments using requestResource
-        const response = await client.requestResource(
-          `Appointment?date=ge${today}&_sort=date&_count=5`
-        ) as Bundle;
-
-        if (response.entry) {
-          const upcomingAppointments = response.entry
-            .map(entry => entry.resource as Appointment)
-            .map(appointment => ({
-              title: appointment.description || "Appointment",
-              date: appointment.start ? formatDate(appointment.start) : "No date set",
-              location: appointment.participant?.find(p => p.actor?.reference?.includes("Location"))?.actor?.display || "Location not specified",
-              type: appointment.serviceType?.[0]?.text || "General"
-            }));
-
-          setAppointments(upcomingAppointments);
-        }
-      } catch (error) {
-        console.error("Error fetching appointments:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchAppointments();
-  }, [client]);
+  const formattedAppointments: AppointmentItem[] = appointments
+    .filter((appointment) => appointment?.id)
+    .map((appointment) => ({
+      title: appointment.description || "Appointment",
+      date: appointment.start ? formatDate(appointment.start) : "No date set",
+      location:
+        appointment.participant?.find((p) =>
+          p.actor?.reference?.includes("Location"),
+        )?.actor?.display || "Location not specified",
+      type: appointment.serviceType?.[0]?.text || "General",
+    }));
 
   if (loading) {
     return (
@@ -73,7 +39,16 @@ const UpcomingSection = () => {
     );
   }
 
-  if (appointments.length === 0) {
+  if (error) {
+    return (
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Upcoming</Text>
+        <Text style={styles.errorText}>{error}</Text>
+      </View>
+    );
+  }
+
+  if (formattedAppointments.length === 0) {
     return (
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Upcoming</Text>
@@ -85,19 +60,18 @@ const UpcomingSection = () => {
   return (
     <View style={styles.section}>
       <Text style={styles.sectionTitle}>Upcoming</Text>
-      {appointments.map((appointment, index) => (
-        <View key={index} style={styles.upcomingItem}>
-          <View style={styles.upcomingIcon}>
-            <Ionicons
-              name={appointment.type.toLowerCase().includes("check") ? "medical" : "calendar"}
-              size={24}
-              color="#ffd33d"
-            />
+      {formattedAppointments.map((appointment, index) => (
+        <View key={index} style={styles.appointmentItem}>
+          <View style={styles.appointmentIcon}>
+            <Ionicons name="calendar-outline" size={24} color="#fff" />
           </View>
-          <View style={styles.upcomingContent}>
-            <Text style={styles.upcomingTitle}>{appointment.title}</Text>
-            <Text style={styles.upcomingDate}>{appointment.date}</Text>
-            <Text style={styles.upcomingLocation}>{appointment.location}</Text>
+          <View style={styles.appointmentDetails}>
+            <Text style={styles.appointmentTitle}>{appointment.title}</Text>
+            <Text style={styles.appointmentDate}>{appointment.date}</Text>
+            <Text style={styles.appointmentLocation}>
+              {appointment.location}
+            </Text>
+            <Text style={styles.appointmentType}>{appointment.type}</Text>
           </View>
         </View>
       ))}
@@ -112,51 +86,62 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   sectionTitle: {
-    color: '#fff',
+    color: "#fff",
     fontSize: 20,
-    fontWeight: 'bold',
+    fontWeight: "bold",
     marginBottom: 15,
   },
-  upcomingItem: {
-    flexDirection: 'row',
-    backgroundColor: '#1a1d20',
+  appointmentItem: {
+    flexDirection: "row",
+    backgroundColor: "#1a1d20",
     padding: 15,
     borderRadius: 12,
     marginBottom: 10,
   },
-  upcomingIcon: {
+  appointmentIcon: {
     marginRight: 15,
-    justifyContent: 'center',
+    justifyContent: "center",
   },
-  upcomingContent: {
+  appointmentDetails: {
     flex: 1,
   },
-  upcomingTitle: {
-    color: '#fff',
+  appointmentTitle: {
+    color: "#fff",
     fontSize: 16,
-    fontWeight: '500',
+    fontWeight: "500",
     marginBottom: 4,
   },
-  upcomingDate: {
-    color: '#ffd33d',
+  appointmentDate: {
+    color: "#ffd33d",
     fontSize: 14,
     marginBottom: 2,
   },
-  upcomingLocation: {
-    color: '#fff',
+  appointmentLocation: {
+    color: "#fff",
+    fontSize: 14,
+    opacity: 0.6,
+  },
+  appointmentType: {
+    color: "#fff",
     fontSize: 14,
     opacity: 0.6,
   },
   loadingText: {
-    color: '#fff',
+    color: "#fff",
     fontSize: 14,
     opacity: 0.8,
-    textAlign: 'center',
+    textAlign: "center",
+  },
+  errorText: {
+    color: "#fff",
+    fontSize: 14,
+    opacity: 0.8,
+    textAlign: "center",
   },
   noAppointmentsText: {
-    color: '#fff',
+    color: "#fff",
     fontSize: 14,
     opacity: 0.8,
-    textAlign: 'center',
+    textAlign: "center",
   },
 });

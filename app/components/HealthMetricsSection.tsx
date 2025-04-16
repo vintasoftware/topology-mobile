@@ -1,163 +1,133 @@
+import { Observation } from "@medplum/fhirtypes";
 import { StyleSheet, Text, View } from "react-native";
-import { useContext, useEffect, useState } from "react";
-import { SmarterFhirContext } from "../context/SmarterFhirContext";
-import { Observation, Bundle } from "@medplum/fhirtypes";
+
+import { usePatient } from "../context/PatientContext";
 
 interface HealthMetric {
   label: string;
   value: string;
   unit: string;
-  status: 'normal' | 'warning';
+  status: "normal" | "warning";
   code: string;
   lastUpdated: string;
 }
 
-const HealthMetricItem = ({ label, value, unit, status, lastUpdated }: {
-  label: string;
-  value: string;
-  unit: string;
-  status: 'normal' | 'warning';
-  lastUpdated: string;
-}) => (
-  <View style={styles.healthMetricItem}>
-    <Text style={styles.healthMetricLabel}>{label}</Text>
-    <View style={styles.healthMetricValueContainer}>
-      <Text style={styles.healthMetricValue}>{value}</Text>
-      <Text style={styles.healthMetricUnit}>{unit}</Text>
-    </View>
-    <View style={[styles.statusIndicator, { backgroundColor: status === 'normal' ? '#27ae60' : '#e74c3c' }]} />
-    <Text style={styles.lastUpdatedText}>Last updated: {lastUpdated}</Text>
-  </View>
-);
+const formatDate = (dateString: string): string => {
+  const date = new Date(dateString);
+  return date.toLocaleDateString();
+};
 
-const getMetricStatus = (observation: Observation): 'normal' | 'warning' => {
-  if (!observation.interpretation?.[0]?.coding?.[0]?.code) return 'normal';
-  return observation.interpretation[0].coding[0].code === 'N' ? 'normal' : 'warning';
+const getMetricStatus = (observation: Observation): "normal" | "warning" => {
+  if (!observation.interpretation?.[0]?.coding?.[0]?.code) return "normal";
+  return observation.interpretation[0].coding[0].code === "N"
+    ? "normal"
+    : "warning";
 };
 
 const getMetricValue = (observation: Observation): string => {
   if (observation.valueQuantity) {
-    return observation.valueQuantity.value?.toString() || 'N/A';
+    return observation.valueQuantity.value?.toString() || "N/A";
   }
   if (observation.component) {
     // For blood pressure, combine systolic and diastolic
-    const systolic = observation.component.find(c => c.code?.coding?.[0]?.code === '8480-6');
-    const diastolic = observation.component.find(c => c.code?.coding?.[0]?.code === '8462-4');
+    const systolic = observation.component.find(
+      (c) => c.code?.coding?.[0]?.code === "8480-6",
+    );
+    const diastolic = observation.component.find(
+      (c) => c.code?.coding?.[0]?.code === "8462-4",
+    );
     if (systolic?.valueQuantity?.value && diastolic?.valueQuantity?.value) {
       return `${systolic.valueQuantity.value}/${diastolic.valueQuantity.value}`;
     }
   }
-  return 'N/A';
+  return "N/A";
 };
 
 const getMetricUnit = (observation: Observation): string => {
   if (observation.valueQuantity) {
-    return observation.valueQuantity.unit || '';
+    return observation.valueQuantity.unit || "";
   }
   if (observation.component) {
     const firstComponent = observation.component[0];
-    return firstComponent?.valueQuantity?.unit || '';
+    return firstComponent?.valueQuantity?.unit || "";
   }
-  return '';
-};
-
-const formatDate = (dateString: string): string => {
-  const date = new Date(dateString);
-  return date.toLocaleDateString('en-US', {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit'
-  });
+  return "";
 };
 
 const HealthMetricsSection = () => {
-  const { client } = useContext(SmarterFhirContext);
-  const [metrics, setMetrics] = useState<HealthMetric[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { healthMetrics, loading, error } = usePatient();
 
-  useEffect(() => {
-    const fetchHealthMetrics = async () => {
-      if (!client) return;
+  // Group observations by code to get the most recent for each type
+  const observationsByCode = healthMetrics.reduce(
+    (acc, observation) => {
+      const code = observation.code?.coding?.[0]?.code;
+      if (!code) return acc;
 
-      try {
-        // Fetch all vital signs observations
-        const response = await client.requestResource(
-          `Observation?category=vital-signs&_sort=-date&_count=100`
-        ) as Bundle;
-
-        if (response.entry) {
-          // Group observations by code to get the most recent for each type
-          const observationsByCode = response.entry
-            .map(entry => entry.resource as Observation)
-            .reduce((acc, observation) => {
-              const code = observation.code?.coding?.[0]?.code;
-              if (!code) return acc;
-
-              if (!acc[code] || new Date(observation.effectiveDateTime || '') > new Date(acc[code].effectiveDateTime || '')) {
-                acc[code] = observation;
-              }
-              return acc;
-            }, {} as Record<string, Observation>);
-
-          const healthMetrics = Object.values(observationsByCode)
-            .map(observation => ({
-              label: observation.code?.text || observation.category?.[0]?.coding?.[0]?.display || 'Unknown Metric',
-              value: getMetricValue(observation),
-              unit: getMetricUnit(observation),
-              status: getMetricStatus(observation),
-              code: observation.code?.coding?.[0]?.code || '',
-              lastUpdated: formatDate(observation.effectiveDateTime || observation.meta?.lastUpdated || '')
-            }))
-            .filter(metric => metric.value !== 'N/A') // Only show metrics with valid values
-            .sort((a, b) => a.label.localeCompare(b.label)); // Sort alphabetically by label
-
-          setMetrics(healthMetrics);
-        }
-      } catch (error) {
-        console.error("Error fetching health metrics:", error);
-      } finally {
-        setLoading(false);
+      if (
+        !acc[code] ||
+        new Date(observation.effectiveDateTime || "") >
+          new Date(acc[code].effectiveDateTime || "")
+      ) {
+        acc[code] = observation;
       }
-    };
+      return acc;
+    },
+    {} as Record<string, Observation>,
+  );
 
-    fetchHealthMetrics();
-  }, [client]);
+  const healthMetricsList: HealthMetric[] = Object.values(observationsByCode)
+    .map((observation) => ({
+      label:
+        observation.code?.text ||
+        observation.category?.[0]?.coding?.[0]?.display ||
+        "Unknown Metric",
+      value: getMetricValue(observation),
+      unit: getMetricUnit(observation),
+      status: getMetricStatus(observation),
+      code: observation.code?.coding?.[0]?.code || "",
+      lastUpdated: formatDate(
+        observation.effectiveDateTime || observation.meta?.lastUpdated || "",
+      ),
+    }))
+    .filter((metric) => metric.value !== "N/A") // Only show metrics with valid values
+    .sort((a, b) => a.label.localeCompare(b.label)); // Sort alphabetically by label
 
   if (loading) {
     return (
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>My Health Metrics</Text>
+        <Text style={styles.sectionTitle}>Health Metrics</Text>
         <Text style={styles.loadingText}>Loading health metrics...</Text>
       </View>
     );
   }
 
-  if (metrics.length === 0) {
+  if (error) {
     return (
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>My Health Metrics</Text>
-        <Text style={styles.noMetricsText}>No health metrics available</Text>
+        <Text style={styles.sectionTitle}>Health Metrics</Text>
+        <Text style={styles.errorText}>{error}</Text>
       </View>
     );
   }
 
   return (
     <View style={styles.section}>
-      <Text style={styles.sectionTitle}>My Health Metrics</Text>
-      <View style={styles.healthMetricsGrid}>
-        {metrics.map((metric, index) => (
-          <HealthMetricItem
-            key={index}
-            label={metric.label}
-            value={metric.value}
-            unit={metric.unit}
-            status={metric.status}
-            lastUpdated={metric.lastUpdated}
-          />
-        ))}
-      </View>
+      <Text style={styles.sectionTitle}>Health Metrics</Text>
+      {healthMetricsList.length > 0 ? (
+        healthMetricsList.map((metric) => (
+          <View key={metric.code} style={styles.metricContainer}>
+            <Text style={styles.metricLabel}>{metric.label}</Text>
+            <Text style={styles.metricValue}>
+              {metric.value} {metric.unit}
+            </Text>
+            <Text style={styles.metricDate}>
+              Last updated: {metric.lastUpdated}
+            </Text>
+          </View>
+        ))
+      ) : (
+        <Text style={styles.noDataText}>No health metrics available</Text>
+      )}
     </View>
   );
 };
@@ -169,47 +139,47 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   sectionTitle: {
-    color: '#fff',
+    color: "#fff",
     fontSize: 20,
-    fontWeight: 'bold',
+    fontWeight: "bold",
     marginBottom: 15,
   },
   healthMetricsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "space-between",
   },
   healthMetricItem: {
-    width: '48%',
-    backgroundColor: '#1a1d20',
+    width: "48%",
+    backgroundColor: "#1a1d20",
     padding: 15,
     borderRadius: 12,
     marginBottom: 15,
-    position: 'relative',
+    position: "relative",
   },
   healthMetricLabel: {
-    color: '#fff',
+    color: "#fff",
     fontSize: 14,
     opacity: 0.8,
     marginBottom: 5,
   },
   healthMetricValueContainer: {
-    flexDirection: 'row',
-    alignItems: 'baseline',
+    flexDirection: "row",
+    alignItems: "baseline",
   },
   healthMetricValue: {
-    color: '#fff',
+    color: "#fff",
     fontSize: 24,
-    fontWeight: 'bold',
+    fontWeight: "bold",
   },
   healthMetricUnit: {
-    color: '#fff',
+    color: "#fff",
     fontSize: 14,
     opacity: 0.6,
     marginLeft: 4,
   },
   statusIndicator: {
-    position: 'absolute',
+    position: "absolute",
     top: 15,
     right: 15,
     width: 8,
@@ -217,21 +187,56 @@ const styles = StyleSheet.create({
     borderRadius: 4,
   },
   loadingText: {
-    color: '#fff',
+    color: "#fff",
     fontSize: 14,
     opacity: 0.8,
-    textAlign: 'center',
+    textAlign: "center",
   },
   noMetricsText: {
-    color: '#fff',
+    color: "#fff",
     fontSize: 14,
     opacity: 0.8,
-    textAlign: 'center',
+    textAlign: "center",
   },
   lastUpdatedText: {
-    color: '#fff',
+    color: "#fff",
     fontSize: 10,
     opacity: 0.6,
     marginTop: 5,
+  },
+  metricContainer: {
+    backgroundColor: "#1a1d20",
+    padding: 15,
+    borderRadius: 12,
+    marginBottom: 15,
+  },
+  metricLabel: {
+    color: "#fff",
+    fontSize: 14,
+    opacity: 0.8,
+    marginBottom: 5,
+  },
+  metricValue: {
+    color: "#fff",
+    fontSize: 24,
+    fontWeight: "bold",
+  },
+  metricDate: {
+    color: "#fff",
+    fontSize: 10,
+    opacity: 0.6,
+    marginTop: 5,
+  },
+  errorText: {
+    color: "#fff",
+    fontSize: 14,
+    opacity: 0.8,
+    textAlign: "center",
+  },
+  noDataText: {
+    color: "#fff",
+    fontSize: 14,
+    opacity: 0.8,
+    textAlign: "center",
   },
 });

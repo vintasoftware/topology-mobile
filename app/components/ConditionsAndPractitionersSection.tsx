@@ -1,7 +1,7 @@
-import React, { useContext, useEffect, useState } from "react";
-import { StyleSheet, Text, View, ScrollView } from "react-native";
-import { Condition, Bundle, Practitioner, Patient } from "@medplum/fhirtypes";
-import { SmarterFhirContext } from "../context/SmarterFhirContext";
+import React from "react";
+import { ScrollView, StyleSheet, Text, View } from "react-native";
+
+import { usePatient } from "../context/PatientContext";
 
 interface ConditionItem {
   id: string;
@@ -24,21 +24,26 @@ interface PractitionerItem {
 
 const formatDate = (dateString: string): string => {
   const date = new Date(dateString);
-  return date.toLocaleDateString('en-US', {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric'
-  });
+  return date.toLocaleDateString();
 };
 
 const ConditionCard = ({ condition }: { condition: ConditionItem }) => (
   <View style={styles.card}>
     <View style={styles.cardHeader}>
       <Text style={styles.cardTitle}>{condition.name}</Text>
-      <View style={[styles.statusBadge, {
-        backgroundColor: condition.status === 'active' ? '#e74c3c' :
-                        condition.status === 'resolved' ? '#27ae60' : '#f39c12'
-      }]}>
+      <View
+        style={[
+          styles.statusBadge,
+          {
+            backgroundColor:
+              condition.status === "active"
+                ? "#e74c3c"
+                : condition.status === "resolved"
+                  ? "#27ae60"
+                  : "#f39c12",
+          },
+        ]}
+      >
         <Text style={styles.statusText}>{condition.status}</Text>
       </View>
     </View>
@@ -52,11 +57,16 @@ const ConditionCard = ({ condition }: { condition: ConditionItem }) => (
   </View>
 );
 
-const PractitionerCard = ({ practitioner }: { practitioner: PractitionerItem }) => (
+const PractitionerCard = ({
+  practitioner,
+}: {
+  practitioner: PractitionerItem;
+}) => (
   <View style={styles.card}>
     <View style={styles.cardHeader}>
       <Text style={styles.cardTitle}>
-        {practitioner.prefix ? `${practitioner.prefix} ` : ''}{practitioner.name}
+        {practitioner.prefix ? `${practitioner.prefix} ` : ""}
+        {practitioner.name}
       </Text>
     </View>
     <Text style={styles.referenceText}>{practitioner.reference}</Text>
@@ -72,111 +82,44 @@ const PractitionerCard = ({ practitioner }: { practitioner: PractitionerItem }) 
   </View>
 );
 
-const removeDuplicates = (conditions: ConditionItem[]): ConditionItem[] => {
-  const uniqueConditions = new Map<string, ConditionItem>();
+const ConditionsAndPractitionersSection = () => {
+  const { conditions, practitioners, loading, error } = usePatient();
 
-  conditions.forEach(condition => {
-    const normalizedName = condition.name.toLowerCase().trim();
-    if (!uniqueConditions.has(normalizedName)) {
-      uniqueConditions.set(normalizedName, condition);
-    }
-  });
+  const formattedConditions: ConditionItem[] = conditions
+    .filter((condition) => condition?.id && condition?.code?.text)
+    .map((condition) => ({
+      id: condition.id!,
+      name: condition.code!.text!,
+      status: condition.clinicalStatus?.coding?.[0]?.code || "unknown",
+      onsetDate: condition.onsetDateTime
+        ? formatDate(condition.onsetDateTime)
+        : "Unknown",
+      severity: condition.severity?.coding?.[0]?.display,
+      category: condition.category?.[0]?.coding?.[0]?.display,
+    }))
+    .filter(
+      (condition) =>
+        condition.name !== "Unknown" &&
+        !condition.name.toLowerCase().includes("unknown") &&
+        condition.status !== "unknown",
+    );
 
-  return Array.from(uniqueConditions.values());
-};
-
-const ConditionsAndPractitionersSection = ({ patient }: { patient: Patient }) => {
-  const { client } = useContext(SmarterFhirContext);
-  const [conditions, setConditions] = useState<ConditionItem[]>([]);
-  const [practitioners, setPractitioners] = useState<PractitionerItem[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  const fetchConditions = async (client: any): Promise<ConditionItem[]> => {
-    const conditionsResponse = (await client.requestResource(
-      "Condition?_sort=-onset-date&_count=10"
-    )) as Bundle;
-    if (!conditionsResponse.entry) return [];
-
-    const conditions = conditionsResponse.entry
-      .map((entry) => entry.resource as Condition)
-      .filter((condition) => condition?.id && condition?.code?.text)
-      .map((condition) => ({
-        id: condition.id!,
-        name: condition.code!.text!,
-        status: condition.clinicalStatus?.coding?.[0]?.code || "unknown",
-        onsetDate: condition.onsetDateTime ? formatDate(condition.onsetDateTime) : "Unknown",
-        severity: condition.severity?.coding?.[0]?.display,
-        category: condition.category?.[0]?.coding?.[0]?.display,
-      }))
-      .filter(
-        (condition) =>
-          condition.name !== "Unknown" &&
-          !condition.name.toLowerCase().includes("unknown") &&
-          condition.status !== "unknown"
-      );
-    return removeDuplicates(conditions);
-  };
-
-  const fetchPractitioners = async (
-    client: any,
-    patient: Patient
-  ): Promise<PractitionerItem[]> => {
-    if (!patient.generalPractitioner) return [];
-
-    const practitionerPromises = patient.generalPractitioner
-      .filter((ref) => ref.reference?.startsWith("Practitioner/"))
-      .map((ref) => {
-        const practitionerId = ref.reference?.split("/")[1];
-        return client.requestResource(
-          `Practitioner/${practitionerId}`
-        ) as Promise<Practitioner>;
-      });
-    const practitionerResponses = await Promise.all(practitionerPromises);
-    return practitionerResponses
-      .filter(
-        (practitioner) =>
-          practitioner?.id && practitioner?.name?.[0]?.text
-      )
-      .map((practitioner) => ({
-        id: practitioner.id!,
-        name: practitioner.name![0].text!,
-        reference: `Practitioner/${practitioner.id}`,
-        prefix: practitioner.name![0].prefix?.[0] || "Dr.",
-        specialty: practitioner.qualification?.[0]?.code?.coding?.[0]?.display,
-        phone: practitioner.telecom?.find((t) => t.system === "phone")
-          ?.value,
-        email: practitioner.telecom?.find((t) => t.system === "email")
-          ?.value,
-      }))
-      .filter(
-        (practitioner) =>
-          practitioner.name !== "Unknown" &&
-          !practitioner.name.toLowerCase().includes("unknown")
-      );
-  };
-
-  useEffect(() => {
-    const fetchData = async () => {
-      if (!client) return;
-
-      try {
-        const [fetchedConditions, fetchedPractitioners] = await Promise.all([
-          fetchConditions(client),
-          fetchPractitioners(client, patient),
-        ]);
-        setConditions(fetchedConditions);
-        setPractitioners(fetchedPractitioners);
-      } catch (error) {
-        console.error("Error fetching data:", error);
-        setError("Unable to fetch data at this time");
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchData();
-  }, [client, patient]);
+  const formattedPractitioners: PractitionerItem[] = practitioners
+    .filter((practitioner) => practitioner?.id && practitioner?.name?.[0]?.text)
+    .map((practitioner) => ({
+      id: practitioner.id!,
+      name: practitioner.name![0].text!,
+      reference: `Practitioner/${practitioner.id}`,
+      prefix: practitioner.name![0].prefix?.[0] || "Dr.",
+      specialty: practitioner.qualification?.[0]?.code?.coding?.[0]?.display,
+      phone: practitioner.telecom?.find((t) => t.system === "phone")?.value,
+      email: practitioner.telecom?.find((t) => t.system === "email")?.value,
+    }))
+    .filter(
+      (practitioner) =>
+        practitioner.name !== "Unknown" &&
+        !practitioner.name.toLowerCase().includes("unknown"),
+    );
 
   if (loading) {
     return (
@@ -201,9 +144,13 @@ const ConditionsAndPractitionersSection = ({ patient }: { patient: Patient }) =>
       <Text style={styles.sectionTitle}>Health Conditions & Care Team</Text>
 
       <Text style={styles.subsectionTitle}>Active Conditions</Text>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.scrollView}>
-        {conditions.length > 0 ? (
-          conditions.map(condition => (
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        style={styles.scrollView}
+      >
+        {formattedConditions.length > 0 ? (
+          formattedConditions.map((condition) => (
             <ConditionCard key={condition.id} condition={condition} />
           ))
         ) : (
@@ -212,10 +159,17 @@ const ConditionsAndPractitionersSection = ({ patient }: { patient: Patient }) =>
       </ScrollView>
 
       <Text style={styles.subsectionTitle}>Care Team</Text>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.scrollView}>
-        {practitioners.length > 0 ? (
-          practitioners.map(practitioner => (
-            <PractitionerCard key={practitioner.id} practitioner={practitioner} />
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        style={styles.scrollView}
+      >
+        {formattedPractitioners.length > 0 ? (
+          formattedPractitioners.map((practitioner) => (
+            <PractitionerCard
+              key={practitioner.id}
+              practitioner={practitioner}
+            />
           ))
         ) : (
           <Text style={styles.noDataText}>No practitioners available</Text>
@@ -230,15 +184,15 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   sectionTitle: {
-    color: '#fff',
+    color: "#fff",
     fontSize: 20,
-    fontWeight: 'bold',
+    fontWeight: "bold",
     marginBottom: 15,
   },
   subsectionTitle: {
-    color: '#fff',
+    color: "#fff",
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: "600",
     marginBottom: 10,
     marginTop: 15,
   },
@@ -246,22 +200,22 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   card: {
-    backgroundColor: '#1a1d20',
+    backgroundColor: "#1a1d20",
     padding: 15,
     borderRadius: 12,
     marginRight: 10,
     width: 300,
   },
   cardHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     marginBottom: 8,
   },
   cardTitle: {
-    color: '#fff',
+    color: "#fff",
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: "600",
     flex: 1,
   },
   statusBadge: {
@@ -271,51 +225,51 @@ const styles = StyleSheet.create({
     marginLeft: 10,
   },
   statusText: {
-    color: '#fff',
+    color: "#fff",
     fontSize: 12,
-    fontWeight: '500',
+    fontWeight: "500",
   },
   referenceBadge: {
-    backgroundColor: '#2c3e50',
+    backgroundColor: "#2c3e50",
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 12,
     marginLeft: 10,
   },
   referenceText: {
-    color: '#fff',
+    color: "#fff",
     fontSize: 10,
-    fontWeight: '500',
+    fontWeight: "500",
   },
   dateText: {
-    color: '#fff',
+    color: "#fff",
     fontSize: 12,
     opacity: 0.8,
     marginBottom: 8,
   },
   detailText: {
-    color: '#fff',
+    color: "#fff",
     fontSize: 14,
     opacity: 0.9,
     marginBottom: 4,
   },
   loadingText: {
-    color: '#fff',
+    color: "#fff",
     fontSize: 14,
     opacity: 0.8,
-    textAlign: 'center',
+    textAlign: "center",
   },
   errorText: {
-    color: '#e74c3c',
+    color: "#e74c3c",
     fontSize: 14,
     opacity: 0.8,
-    textAlign: 'center',
+    textAlign: "center",
   },
   noDataText: {
-    color: '#fff',
+    color: "#fff",
     fontSize: 14,
     opacity: 0.8,
-    textAlign: 'center',
+    textAlign: "center",
     width: 300,
   },
 });
