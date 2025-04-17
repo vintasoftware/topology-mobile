@@ -72,7 +72,7 @@ export const PatientProvider: React.FC<{ children: React.ReactNode }> = ({
       setPatient(patientData);
 
       const today = new Date().toISOString().split("T")[0];
-      const practitionerPromises = patientData.generalPractitioner
+      const practitionerPromises = (patientData.generalPractitioner ?? [])
         .filter((ref: Reference) => ref.reference?.startsWith("Practitioner/"))
         .map((ref: Reference) => {
           const practitionerId = ref.reference?.split("/")[1];
