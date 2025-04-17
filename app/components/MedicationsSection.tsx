@@ -1,7 +1,6 @@
-import { StyleSheet, Text, View, ScrollView } from "react-native";
-import { useContext, useEffect, useState } from "react";
-import { SmarterFhirContext } from "../context/SmarterFhirContext";
-import { MedicationRequest, Bundle } from "@medplum/fhirtypes";
+import { ScrollView, StyleSheet, Text, View } from "react-native";
+
+import { usePatient } from "../context/PatientContext";
 
 interface MedicationItem {
   id: string;
@@ -17,21 +16,26 @@ interface MedicationItem {
 
 const formatDate = (dateString: string): string => {
   const date = new Date(dateString);
-  return date.toLocaleDateString('en-US', {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric'
-  });
+  return date.toLocaleDateString();
 };
 
 const MedicationCard = ({ medication }: { medication: MedicationItem }) => (
   <View style={styles.card}>
     <View style={styles.cardHeader}>
       <Text style={styles.cardTitle}>{medication.name}</Text>
-      <View style={[styles.statusBadge, {
-        backgroundColor: medication.status === 'active' ? '#27ae60' :
-                        medication.status === 'completed' ? '#3498db' : '#f39c12'
-      }]}>
+      <View
+        style={[
+          styles.statusBadge,
+          {
+            backgroundColor:
+              medication.status === "active"
+                ? "#27ae60"
+                : medication.status === "completed"
+                  ? "#3498db"
+                  : "#f39c12",
+          },
+        ]}
+      >
         <Text style={styles.statusText}>{medication.status}</Text>
       </View>
     </View>
@@ -43,7 +47,9 @@ const MedicationCard = ({ medication }: { medication: MedicationItem }) => (
         <Text style={styles.detailText}>End Date: {medication.endDate}</Text>
       )}
       {medication.prescriber && (
-        <Text style={styles.detailText}>Prescriber: {medication.prescriber}</Text>
+        <Text style={styles.detailText}>
+          Prescriber: {medication.prescriber}
+        </Text>
       )}
       {medication.category && (
         <Text style={styles.detailText}>Category: {medication.category}</Text>
@@ -53,54 +59,34 @@ const MedicationCard = ({ medication }: { medication: MedicationItem }) => (
 );
 
 const MedicationsSection = () => {
-  const { client } = useContext(SmarterFhirContext);
-  const [medications, setMedications] = useState<MedicationItem[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { medications, loading, error } = usePatient();
 
-  useEffect(() => {
-    const fetchMedications = async () => {
-      if (!client) return;
-
-      try {
-        // Fetch MedicationRequests (active prescriptions)
-        const requestsResponse = await client.requestResource(
-          'MedicationRequest?_sort=-date&status=active&_count=20'
-        ) as Bundle;
-
-        if (requestsResponse.entry) {
-          const requests = requestsResponse.entry
-            .map(entry => entry.resource as MedicationRequest)
-            .map(request => ({
-              id: request.id || '',
-              name: request.medicationReference?.display || request.medicationCodeableConcept?.text || 'Unknown Medication',
-              status: request.status || 'unknown',
-              dosage: request.dosageInstruction?.[0]?.text || 'No dosage specified',
-              frequency: request.dosageInstruction?.[0]?.timing?.code?.text || 'As needed',
-              startDate: formatDate(request.authoredOn || ''),
-              endDate: request.dispenseRequest?.validityPeriod?.end ? formatDate(request.dispenseRequest.validityPeriod.end) : undefined,
-              prescriber: request.requester?.display,
-              category: 'Prescription'
-            }))
-            .filter(medication =>
-              medication.name !== 'Unknown Medication' &&
-              !medication.name.toLowerCase().includes('unknown') &&
-              medication.status !== 'unknown' &&
-              medication.dosage !== 'No dosage specified'
-            );
-
-          setMedications(requests);
-        }
-      } catch (error) {
-        console.error("Error fetching medications:", error);
-        setError("Unable to fetch medications at this time");
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchMedications();
-  }, [client]);
+  const formattedMedications: MedicationItem[] = medications
+    .filter((medication) => medication?.id)
+    .map((medication) => ({
+      id: medication.id!,
+      name:
+        medication.medicationReference?.display ||
+        medication.medicationCodeableConcept?.text ||
+        "Unknown Medication",
+      status: medication.status || "unknown",
+      dosage: medication.dosageInstruction?.[0]?.text || "No dosage specified",
+      frequency:
+        medication.dosageInstruction?.[0]?.timing?.code?.text || "As needed",
+      startDate: formatDate(medication.authoredOn || ""),
+      endDate: medication.dispenseRequest?.validityPeriod?.end
+        ? formatDate(medication.dispenseRequest.validityPeriod.end)
+        : undefined,
+      prescriber: medication.requester?.display,
+      category: "Prescription",
+    }))
+    .filter(
+      (medication) =>
+        medication.name !== "Unknown Medication" &&
+        !medication.name.toLowerCase().includes("unknown") &&
+        medication.status !== "unknown" &&
+        medication.dosage !== "No dosage specified",
+    );
 
   if (loading) {
     return (
@@ -123,9 +109,13 @@ const MedicationsSection = () => {
   return (
     <View style={styles.section}>
       <Text style={styles.sectionTitle}>Medications</Text>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.scrollView}>
-        {medications.length > 0 ? (
-          medications.map(medication => (
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        style={styles.scrollView}
+      >
+        {formattedMedications.length > 0 ? (
+          formattedMedications.map((medication) => (
             <MedicationCard key={medication.id} medication={medication} />
           ))
         ) : (
@@ -143,31 +133,31 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   sectionTitle: {
-    color: '#fff',
+    color: "#fff",
     fontSize: 20,
-    fontWeight: 'bold',
+    fontWeight: "bold",
     marginBottom: 15,
   },
   scrollView: {
     marginBottom: 10,
   },
   card: {
-    backgroundColor: '#1a1d20',
+    backgroundColor: "#1a1d20",
     padding: 15,
     borderRadius: 12,
     marginRight: 10,
     width: 300,
   },
   cardHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     marginBottom: 8,
   },
   cardTitle: {
-    color: '#fff',
+    color: "#fff",
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: "600",
     flex: 1,
   },
   statusBadge: {
@@ -177,36 +167,36 @@ const styles = StyleSheet.create({
     marginLeft: 10,
   },
   statusText: {
-    color: '#fff',
+    color: "#fff",
     fontSize: 12,
-    fontWeight: '500',
+    fontWeight: "500",
   },
   detailsContainer: {
     marginTop: 8,
   },
   detailText: {
-    color: '#fff',
+    color: "#fff",
     fontSize: 14,
     opacity: 0.9,
     marginBottom: 4,
   },
   loadingText: {
-    color: '#fff',
+    color: "#fff",
     fontSize: 14,
     opacity: 0.8,
-    textAlign: 'center',
+    textAlign: "center",
   },
   errorText: {
-    color: '#e74c3c',
+    color: "#e74c3c",
     fontSize: 14,
     opacity: 0.8,
-    textAlign: 'center',
+    textAlign: "center",
   },
   noDataText: {
-    color: '#fff',
+    color: "#fff",
     fontSize: 14,
     opacity: 0.8,
-    textAlign: 'center',
+    textAlign: "center",
     width: 300,
   },
 });
