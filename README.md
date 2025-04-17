@@ -2,6 +2,12 @@
 
 This application demonstrates how to build a patient-facing healthcare app that can securely connect to Epic and other EMR systems through the [SMARTerFHIR toolkit](https://github.com/TopologyHealth/SMARTerFHIR).
 
+## Demo video
+
+<div align="center">
+  <video src="https://github.com/user-attachments/assets/7fc97bb0-c0fe-4fe1-8b7f-4ba55b80a58f" />
+</div>
+
 ## Key Features
 
 - OAuth2 Authentication with Epic and other EMR systems
@@ -13,6 +19,7 @@ This application demonstrates how to build a patient-facing healthcare app that 
   - Upcoming appointments
   - Health metrics
   - Medications
+- AI-powered chat interface using OpenAI
 
 ### Application Content
 
@@ -26,6 +33,10 @@ The following screenshots showcase the key features of the Topology Mobile appli
 | :------------------------------------------: | :--------------------------------------------------------: | :----------------------------------------------------------------------: |
 |              Patient Dashboard               |                Dashboard (Alternative View)                |                       Health Metrics & Medications                       |
 
+| ![AI Assistant first message](images/chat1.jpg) | ![AI Assistant answering about epic data](images/chat2.jpg) | ![AI Assistant extrapolation](images/chat3.jpg) |
+| :---------------------------------------------: | :---------------------------------------------------------: | :---------------------------------------------: |
+|                AI Assistant Chat                |           AI Assistant answering about epic data            |           AI Assistant extrapolation            |
+
 ### About Topology Health
 
 Topology Health has a set of tools for faster and easier EMR/EHR integration. https://github.com/TopologyHealth
@@ -37,6 +48,7 @@ Topology Health has a set of tools for faster and easier EMR/EHR integration. ht
 - [Expo CLI](https://docs.expo.dev/)
 - npm or yarn
 - iOS Simulator (for iOS) or Android Emulator (for Android)
+- OpenAI API access via proxy (This example uses [Backmesh](https://backmesh.com))
 
 ### Install
 
@@ -61,6 +73,23 @@ In the output, you'll find options to open the app in a
 
 You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
 
+3. Copy the `.env.local.example` file to `.env`
+
+   ```bash
+   cp .env.local.example .env
+   ```
+
+4. Fill in the values in the `.env` file:
+
+   ```bash
+   EXPO_PUBLIC_EMR_CLIENT_ID=your_web_client_id
+   EXPO_PUBLIC_REDIRECT_URL=your_app_redirect_url
+   EXPO_PUBLIC_BACKMESH_URL=your_openai_proxy_url
+   EXPO_PUBLIC_FIREBASE_API_KEY=your_firebase_api_key
+   EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN=your_firebase_auth_domain
+   EXPO_PUBLIC_FIREBASE_PROJECT_ID=your_firebase_project_id
+   ```
+
 ### Development Setup
 
 The project uses ESLint, Prettier, and Husky for code quality and consistency. Install Husky pre-commit hooks:
@@ -80,18 +109,20 @@ npm run prepare
       - Run `npm start`, run the app on your device with Expo Go, and check the "Redirect URL: ..." log message in the terminal to get the IP address to use.
    3. After creating the two new client applications, copy the client ID from both.
 
-3. Copy the `.env.local.example` file to `.env`
+3. Configure environment variables.
 
-   ```bash
-   cp .env.local.example .env
-   ```
+### OpenAI Configuration
 
-4. Fill in the values in the `.env` file:
+The application uses `openai-react-native` for chat functionality. As recommended by [openai-react-native](https://github.com/backmesh/openai-react-native), we use a proxy server to secure the OpenAI API key. Here's how it's configured:
 
-   ```bash
-   EXPO_PUBLIC_MEDPLUM_WEB_CLIENT_ID=your_web_client_id
-   EXPO_PUBLIC_MEDPLUM_NATIVE_CLIENT_ID=your_native_client_id
-   ```
+```typescript
+const client = new OpenAI({
+  baseURL: process.env.EXPO_PUBLIC_BACKMESH_URL!,
+  apiKey: await creds.user.getIdToken(), // Using Firebase auth token
+});
+```
+
+⚠️ **Security Note**: Never expose your OpenAI API key directly in the mobile app. Always use a proxy server.
 
 ## Learn more
 

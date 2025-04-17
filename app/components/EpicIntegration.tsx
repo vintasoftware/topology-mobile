@@ -1,12 +1,12 @@
 import { BaseClient, EMR, LAUNCH } from "@TopologyHealth/smarterfhir";
-import { Button, Linking, StyleSheet, Text, View } from "react-native";
-import updateLocationPolyfill from "../locationPolyfill";
-import ClientFactoryNative from "../clientHandler";
-import SmartLaunchHandlerNative from "../smartHandler";
 import * as WebBrowser from "expo-web-browser";
-import { useContext, useEffect } from "react";
-import { useRef } from "react";
+import { useContext, useEffect, useRef } from "react";
+import { Button, Linking, StyleSheet, Text, View } from "react-native";
+
+import ClientFactoryNative from "../clientHandler";
 import { SmarterFhirContext } from "../context/SmarterFhirContext";
+import updateLocationPolyfill from "../locationPolyfill";
+import SmartLaunchHandlerNative from "../smartHandler";
 WebBrowser.maybeCompleteAuthSession();
 
 updateLocationPolyfill(process.env.EXPO_PUBLIC_REDIRECT_URL!);
@@ -71,8 +71,21 @@ export default function EpicIntegration() {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>OAuth2 Authentication</Text>
-      <Button title="Login with Epic" onPress={handleLogin} />
+      <View style={styles.content}>
+        <Text style={styles.title}>Health Chat Assistant</Text>
+
+        <Text style={styles.description}>
+          Connect with your Epic health records to get personalized health
+          insights and chat with your AI health assistant.
+        </Text>
+
+        <Button title="Login with Epic" onPress={handleLogin} />
+
+        <Text style={styles.privacyText}>
+          Your health data remains private and secure. We only access the
+          information you explicitly authorize.
+        </Text>
+      </View>
     </View>
   );
 }
@@ -80,14 +93,39 @@ export default function EpicIntegration() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: "#25292e",
     justifyContent: "center",
     alignItems: "center",
+    padding: 20,
+  },
+  content: {
+    width: "100%",
+    maxWidth: 400,
+    alignItems: "center",
+  },
+  logo: {
+    width: 100,
+    height: 100,
+    marginBottom: 20,
   },
   title: {
-    fontSize: 18,
+    fontSize: 24,
     fontWeight: "bold",
-    marginBottom: 20,
-    color: "white",
+    color: "#fff",
+    marginBottom: 16,
+  },
+  description: {
+    fontSize: 16,
+    color: "#aaa",
     textAlign: "center",
+    marginBottom: 32,
+    lineHeight: 24,
+  },
+  privacyText: {
+    fontSize: 12,
+    color: "#777",
+    textAlign: "center",
+    lineHeight: 18,
+    marginTop: 16,
   },
 });
