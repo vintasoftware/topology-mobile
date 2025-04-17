@@ -49,6 +49,19 @@ export const Chat = () => {
     }
   }, [fhirClient]);
 
+  const updateLastAssistantMessage = (
+    messages: Message[],
+    text: string,
+    status: "sending" | "sent" | "error",
+  ) => {
+    return messages.map((message, index) => {
+      if (index === messages.length - 1 && message.sender === "system") {
+        return { ...message, text, status };
+      }
+      return message;
+    });
+  };
+
   const initializeWithWelcomeMessage = async (client: OpenAI) => {
     if (!client) return;
 
@@ -72,32 +85,12 @@ export const Chat = () => {
       );
 
       // Update the assistant message with the response
-      setMessages((prev) => {
-        const lastMessage = prev[prev.length - 1];
-        if (lastMessage.sender === "system") {
-          return [
-            ...prev.slice(0, -1),
-            { ...lastMessage, text: content, status: "sent" },
-          ];
-        }
-        return prev;
-      });
+      setMessages((prev) => updateLastAssistantMessage(prev, content, "sent"));
     } catch (error) {
       console.error("Error initializing welcome message:", error);
-      setMessages((prev) => {
-        const lastMessage = prev[prev.length - 1];
-        if (lastMessage.sender === "system") {
-          return [
-            ...prev.slice(0, -1),
-            {
-              ...lastMessage,
-              text: DEFAULT_WELCOME_MESSAGE,
-              status: "error",
-            },
-          ];
-        }
-        return prev;
-      });
+      setMessages((prev) =>
+        updateLastAssistantMessage(prev, DEFAULT_WELCOME_MESSAGE, "error"),
+      );
     } finally {
       setIsLoading(false);
     }
@@ -133,29 +126,13 @@ export const Chat = () => {
       );
 
       // Update the assistant message with the response
-      setMessages((prev) => {
-        const lastMessage = prev[prev.length - 1];
-        if (lastMessage.sender === "system") {
-          return [
-            ...prev.slice(0, -1),
-            { ...lastMessage, text: content, status: "sent" },
-          ];
-        }
-        return prev;
-      });
+      setMessages((prev) => updateLastAssistantMessage(prev, content, "sent"));
     } catch (error) {
       console.error("API Error:", error);
       // Show error in the chat
-      setMessages((prev) => {
-        const lastMessage = prev[prev.length - 1];
-        if (lastMessage.sender === "system") {
-          return [
-            ...prev.slice(0, -1),
-            { ...lastMessage, text: ERROR_MESSAGE, status: "error" },
-          ];
-        }
-        return prev;
-      });
+      setMessages((prev) =>
+        updateLastAssistantMessage(prev, ERROR_MESSAGE, "error"),
+      );
     } finally {
       setIsLoading(false);
     }
