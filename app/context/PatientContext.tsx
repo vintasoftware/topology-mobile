@@ -30,6 +30,19 @@ interface PatientContextType {
 
 const PatientContext = createContext<PatientContextType | undefined>(undefined);
 
+const removeDuplicates = (conditions: Condition[]): Condition[] => {
+  const uniqueConditions = new Map<string, Condition>();
+
+  conditions.forEach((condition) => {
+    const normalizedName = condition.code?.text?.toLowerCase().trim() || "";
+    if (!uniqueConditions.has(normalizedName)) {
+      uniqueConditions.set(normalizedName, condition);
+    }
+  });
+
+  return Array.from(uniqueConditions.values());
+};
+
 export const PatientProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
@@ -95,9 +108,11 @@ export const PatientProvider: React.FC<{ children: React.ReactNode }> = ({
 
       // Update state with fetched data
       setConditions(
-        conditionsResponse.entry?.map(
-          (entry: BundleEntry) => entry.resource as Condition,
-        ) || [],
+        removeDuplicates(
+          conditionsResponse.entry?.map(
+            (entry: BundleEntry) => entry.resource as Condition,
+          ) || [],
+        ),
       );
       setHealthMetrics(
         healthMetricsResponse.entry?.map(

@@ -1,14 +1,10 @@
 import React from "react";
 import { StyleSheet, View } from "react-native";
 
-import { Chat } from "../components/Chat";
+// import { Chat } from "../components/Chat";
 
 export default function ChatScreen() {
-  return (
-    <View style={styles.container}>
-      <Chat />
-    </View>
-  );
+  return <View style={styles.container}>{/* <Chat /> */}</View>;
 }
 
 const styles = StyleSheet.create({
