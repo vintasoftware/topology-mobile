@@ -1,10 +1,11 @@
 import OpenAI from "openai-react-native";
-import React, { useEffect, useState } from "react";
+import React, { useContext, useEffect, useState } from "react";
 import {
   KeyboardAvoidingView,
   Platform,
   SafeAreaView,
   StyleSheet,
+  Text,
   View,
 } from "react-native";
 
@@ -14,6 +15,7 @@ import {
   WELCOME_MESSAGE,
 } from "../constants/chatConstants";
 import { usePatient } from "../context/PatientContext";
+import { SmarterFhirContext } from "../context/SmarterFhirContext";
 import {
   generateChatResponse,
   initializeOpenAI,
@@ -28,20 +30,24 @@ export const Chat = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const patientData = usePatient();
+  const { client: fhirClient } = useContext(SmarterFhirContext);
 
   useEffect(() => {
-    const setupChat = async () => {
-      try {
-        const newClient = await initializeOpenAI();
-        setClient(newClient);
-        await initializeWithWelcomeMessage(newClient);
-      } catch (error) {
-        console.error("Error setting up chat:", error);
-      }
-    };
+    // Only initialize chat when user is logged in
+    if (fhirClient) {
+      const setupChat = async () => {
+        try {
+          const newClient = await initializeOpenAI();
+          setClient(newClient);
+          await initializeWithWelcomeMessage(newClient);
+        } catch (error) {
+          console.error("Error setting up chat:", error);
+        }
+      };
 
-    setupChat();
-  }, []);
+      setupChat();
+    }
+  }, [fhirClient]);
 
   const initializeWithWelcomeMessage = async (client: OpenAI) => {
     if (!client) return;
@@ -167,6 +173,28 @@ export const Chat = () => {
     }
   };
 
+  // If user is not logged in with Epic, show the Epic integration screen
+  if (!fhirClient) {
+    return (
+      <SafeAreaView style={styles.logoutContainer}>
+        <View style={styles.content}>
+          <Text style={styles.title}>Health Chat Assistant</Text>
+
+          <Text style={styles.description}>
+            Connect with your Epic health records to get personalized health
+            insights and chat with your AI health assistant.
+          </Text>
+
+          <Text style={styles.privacyText}>
+            Your health data remains private and secure. We only access the
+            information you explicitly authorize.
+          </Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  // User is logged in, show the chat interface
   return (
     <SafeAreaView style={styles.container}>
       <KeyboardAvoidingView
@@ -192,17 +220,38 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#25292e",
   },
+  logoutContainer: {
+    flex: 1,
+    backgroundColor: "#25292e",
+    padding: 20,
+  },
   contentContainer: {
     flex: 1,
     justifyContent: "space-between",
   },
-  loadingOverlay: {
-    position: "absolute",
-    top: 10,
-    right: 10,
-    zIndex: 5,
-    backgroundColor: "rgba(0,0,0,0.3)",
-    padding: 10,
-    borderRadius: 20,
+  content: {
+    width: "100%",
+    maxWidth: 400,
+    alignItems: "center",
+  },
+  title: {
+    fontSize: 24,
+    fontWeight: "bold",
+    color: "#fff",
+    marginBottom: 16,
+  },
+  description: {
+    fontSize: 16,
+    color: "#aaa",
+    textAlign: "center",
+    marginBottom: 32,
+    lineHeight: 24,
+  },
+  privacyText: {
+    fontSize: 12,
+    color: "#777",
+    textAlign: "center",
+    lineHeight: 18,
+    marginTop: 16,
   },
 });
