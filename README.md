@@ -2,6 +2,12 @@
 
 This application demonstrates how to build a patient-facing healthcare app that can securely connect to Epic and other EMR systems through the [SMARTerFHIR toolkit](https://github.com/TopologyHealth/SMARTerFHIR).
 
+## Demo video
+
+<div align="center">
+  <video src="https://github.com/user-attachments/assets/7fc97bb0-c0fe-4fe1-8b7f-4ba55b80a58f" />
+</div>
+
 ## Key Features
 
 - OAuth2 Authentication with Epic and other EMR systems
